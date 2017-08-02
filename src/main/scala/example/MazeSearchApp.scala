@@ -71,7 +71,7 @@ object MazeSearchApp extends App {
         if (!isVisited(neighbor)) {
           sub {
             for {
-              _ <- moveFromTo(neighbor,n)
+              _ <- moveFromTo(n,neighbor)
               _ <- visit(neighbor, maze)
               _ <- move(n, "back:")
             } yield ()
@@ -83,15 +83,17 @@ object MazeSearchApp extends App {
     } yield ()
   }
 
+  def timeout(threshold: Int, ctx:Context = Abort) = {
+    val now = moveCount.now
+    Signal {
+      if (moveCount() > now + threshold) ctx else Continue
+    }
+  }
+
   def search(maze: Set[Node], max: Int) = {
     val startNode: Node = maze.find(_.point == (0,0)).orElse(Some(maze.head)).get
-    val timeout = Signal {
-      if (moveCount() > max) Abort else Continue
-    }
-    moveCount() = 0
-
     println("start from:" + startNode)
-    run(visit(startNode, maze), timeout)
+    run(visit(startNode, maze), () => timeout(max,Abort))
     val visitedNodes = maze.filter(_.visited).map(_.point)
     println("visited:" + visitedNodes)
   }
@@ -111,14 +113,8 @@ object MazeSearchApp extends App {
 
   def searchRestart(maze: Set[Node], max: Int) = {
     val startNode: Node = maze.find(_.point == (0,0)).orElse(Some(maze.head)).get
-    val timeout = Signal {
-      if (moveCount() > max) Restart else Continue
-    }
-    moveCount() = 0
-
     println("start from:" + startNode)
-    run(visit(startNode, maze), timeout,
-      () => {moveCount() = 0; println("*** restart ***")})
+    run(visit(startNode, maze), () => timeout(max,Restart))
     val visitedNodes = maze.filter(_.visited).map(_.point)
     println("visited:" + visitedNodes)
   }

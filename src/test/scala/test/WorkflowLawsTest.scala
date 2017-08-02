@@ -33,7 +33,7 @@ class WorkflowLawsTest extends FunSuite {
     }
 
     def liAbort[A,B](x: A, f: A => Workflow[B]): Boolean ={
-      ST.run(point(x).flatMap(f),Var(Abort)) == ST.run(f(x),Var(Abort))
+      ST.run(point(x).flatMap(f),() => Var(Abort)) == ST.run(f(x),() => Var(Abort))
     }
     assert(leftIdentity(3,f))
     assert(leftIdentity(false,g))
@@ -76,7 +76,7 @@ class WorkflowLawsTest extends FunSuite {
       _ <- (i += 2)
     } yield ()
 
-    assert(ST.run(t,time).isFailure)
+    assert(ST.run(t,() => time).isFailure)
     assert(i == -1)
 
   }

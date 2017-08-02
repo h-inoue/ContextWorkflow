@@ -34,9 +34,9 @@ trait Workflow[A]{ self =>
 
 //  private[workflow] def runrun[B](e:Signal[Context])(next:A => Trampoline[Try[B]]):Trampoline[Try[B]] = this.execute(e)(next)
 
-  private[workflow] def runnable(e:Signal[Context]):Trampoline[Try[A]] = this.execute[A](e)((x:A) => done(Success(x)))
+  private[workflow] def runnable(ctx:Signal[Context]):Trampoline[Try[A]] = this.execute[A](ctx)((x:A) => done(Success(x)))
 
-  private[workflow] def run(e:Signal[Context]):Try[A] = this.execute[A](e)((x:A) => done(Success(x))).run
+  private[workflow] def run(ctx:Signal[Context]):Try[A] = this.execute[A](ctx)((x:A) => done(Success(x))).run
 }
 
 object Workflows extends scalaz.Monad[Workflow] {
@@ -51,10 +51,10 @@ object Workflows extends scalaz.Monad[Workflow] {
   def bind[A, B](a: Workflow[A])(f: A => Workflow[B]): Workflow[B] =
     a.flatMap(f)
 
-  def run[A](t:Workflow[A],ctx:Signal[Context] = Var(Continue),onRestart:() => Unit = () => ()):Try[A] =
-    t.run(ctx) match {
-      case Failure(RestartTE) => onRestart();run(t,ctx,onRestart)
-      case e@_ => e
+  def run[A](t:Workflow[A],createSC: () => Signal[Context] = () => Var(Continue)):Try[A] =
+    t.run(createSC()) match {
+      case Failure(RestartTE) => run(t,createSC)
+      case e => e
     }
 
   private def atom[A](proc: => A)(comp: A => Unit = empty_comp): Workflow[A] =
